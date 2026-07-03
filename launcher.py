@@ -1,0 +1,10 @@
+from tkinter import *
+root = Tk()
+root.geometry("400x400")
+root.resizable(width=False, height=False)
+root.title("Minecraft Launcher")
+canvas = Canvas(root, width=400, height=400)
+canvas.pack()
+logo = PhotoImage(file="C:/Users/S/PycharmProjects/minecraft-launher/MKlaunher.png")
+canvas.create_image(50, 50, anchor=NW, image=logo)
+root.mainloop()

@@ -1,0 +1,7 @@
+Package: mklauncher-for-linux
+Version: 1.0.0
+Architecture: all
+Maintainer: github_username: makskolodiy
+Description: minecraftlauncher_for_linux
+Priority: optional
+Section: utils
