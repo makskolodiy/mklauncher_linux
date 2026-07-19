@@ -5,16 +5,17 @@ import time
 import threading
 import subprocess
 import tkinter as tk
+import webbrowser
 from tkinter import ttk, messagebox, scrolledtext
 import shutil
-
+from plyer import notification
 from minecraft_launcher_lib.install import install_minecraft_version
 from minecraft_launcher_lib.fabric import install_fabric
 from minecraft_launcher_lib.quilt import install_quilt
 from minecraft_launcher_lib.forge import install_forge_version
 from minecraft_launcher_lib.command import get_minecraft_command
 from minecraft_launcher_lib.utils import get_version_list
-
+from tkinter import font
 # ===================== PATHS =====================
 
 HOME = os.path.expanduser("~")
@@ -62,15 +63,34 @@ def save_config(username, uid):
 class LauncherApp(tk.Tk):
     def __init__(self):
         super().__init__()
-
-        self.title("MKLauncher (Linux)")
+        self.after(0, self.withdraw)  # Скрыть лаунчер
+        self.title("MKLauncher (Linux) 1.0.1 release")
         self.geometry("800x700")
         self.username, self.uuid = load_config()
-
+        for name in (
+            "TkDefaultFont",
+            "TkTextFont",
+            "TkFixedFont",
+            "TkMenuFont",
+            "TkHeadingFont",
+            "TkCaptionFont",
+            "TkSmallCaptionFont",
+            "TkIconFont",
+            "TkTooltipFont",
+        ):
+            try:
+                font.nametofont(name).configure(family="MinecraftRus", size=9)
+            except:
+                messagebox.showerror("error","error loading font")
         if not self.uuid:
             self.uuid = str(uuid.uuid4())
             save_config(self.username, self.uuid)
-
+        if messagebox.askquestion("support MKlauncher","If you enjoy using the launcher, you can visit the project's GitHub page and support its development.") == "yes":
+            messagebox.showinfo("thank you","Thank you for supporting the development of MKLauncher! We truly appreciate your support. Feel free to share your ideas and suggestions for features you'd like to see added to the launcher.")
+            webbrowser.open("https://github.com/makskolodiy/mklauncher_linux")
+        self.after(0, self.deiconify)  # Показать лаунчер снова
+        self.mkiller = Mkiller(self)
+        self.mkiller.withdraw()
         self.build_ui()
 
         log("Launcher started (Linux, OpenGL mode)")
@@ -119,6 +139,8 @@ class LauncherApp(tk.Tk):
         tk.Button(f3, text="Refresh", command=self.update_versions).pack(side="left", padx=10)
         tk.Button(f3, text="Play", command=self.play, bg="#4CAF50", fg="white", width=12).pack(side="left", padx=10)
         tk.Button(f3, text="Reset", command=self.reset, bg="#d32f2f", fg="white").pack(side="left", padx=10)
+        tk.Button(f3, text="Report a Bug", command=self.problem, bg="#d32f2f", fg="white").pack(side="left", padx=10)
+
 
         # Progress
         self.prog_var = tk.DoubleVar()
@@ -203,20 +225,27 @@ class LauncherApp(tk.Tk):
                 "uuid": self.uuid,
                 "token": "0"
             }
-
+            notification.notify(
+                title="MKlauncher",
+                message="Minecraft installed (updated), launching minecraft...",
+                timeout=8
+            )
             log("Launching Minecraft...")
-
+            self.after(0, self.withdraw)  # Скрыть лаунчер
             cmd = get_minecraft_command(version, dir_game, options)
-
-            proc = subprocess.Popen(
+            self.mkiller.deiconify()
+            self.proc = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True
             )
 
-            for line in proc.stdout:
+            for line in self.proc.stdout:
                 self.after(0, lambda l=line.strip(): self.append_log(l))
+            self.proc.wait()
+            self.after(0, self.deiconify)  # Показать лаунчер снова
+            self.mkiller.withdraw()
 
         except Exception as e:
             log(f"Error: {e}")
@@ -229,7 +258,35 @@ class LauncherApp(tk.Tk):
             shutil.rmtree(LAUNCHER_DIR, ignore_errors=True)
             os.makedirs(LAUNCHER_DIR, exist_ok=True)
             log("Launcher reset completed")
+    def problem(self):
+        webbrowser.open("https://github.com/makskolodiy/mklauncher_linux")
+        notification.notify(
+            title="MKlauncher, report of bug",
+            message="Please report this bug on our GitHub page. Thank you for helping improve MKLauncher!",
+            timeout=8
+        )
 
+
+class Mkiller(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent  # ← Этой строки у тебя нет
+        self.title("Process Control")
+        self.geometry("250x100")
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        button = tk.Button(
+            self,
+            text="Kill Minecraft",
+            command=self.kill
+        )
+        button.pack(pady=20)
+    def on_close(self):
+        messagebox.showinfo("MKlauncher", "this window no closable")
+    def kill(self):
+        if hasattr(self.parent, "proc") and self.parent.proc:
+            self.parent.proc.kill()
+            log("minecraft killed")
+            self.withdraw()
 # ================= RUN =================
 
 if __name__ == "__main__":
